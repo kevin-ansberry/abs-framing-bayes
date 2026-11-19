@@ -46,13 +46,12 @@ Pitch coordinates are rescaled so the nominal zone edge sits at +/-1 on both axe
 
 ## Status (read this first)
 
-- **Tested:** the HSGP basis (checked against the exact kernel), coordinate normalization,
-  and the data-prep pipeline, all on synthetic data (`pytest`).
-- **Not yet run:** the Stan models have not been compiled or sampled, the Statcast and umpire
-  pulls have not been run, and no results exist yet. The challenge model's input schema is an
-  assumption about what ABS challenge data looks like; check what is publicly available.
-- Run `scripts/simulate.py` and fit the model to the synthetic data first. The simulated
-  catcher effect scale drops from 0.30 to 0.20, so `d_sigma_c` should be centered near -0.10.
+- **Done:** the called-strike model compiles and samples; it recovers known parameters on simulated
+  data (15k, 30k and 60k pitches); and it has been fit to 30,000 real pitches (2025 and a two-week
+  2026 sample). Unit tests cover the HSGP basis, coordinate normalization and data prep (`pytest`).
+- **Exploratory:** the real-data results below come from a small sample. Read them as a demonstration
+  of the pipeline, not as findings about umpires or catchers.
+- **Not yet run:** the challenge model (`stan/challenge.stan`) has not been run on real data.
 
 ## Quickstart
 
@@ -106,20 +105,16 @@ tests/          basis accuracy, normalization, pipeline checks
 - A season is a poor "control": other changes between 2025 and 2026 are absorbed into the
   season effects. This is an association, not a clean causal estimate of ABS.
 
-## Results
-
-_To be added after running the models: surface plots, the posterior for `d_sigma_c` and
-`d_sigma_u`, and a ranked, uncertainty-aware list of catchers._
-
 ## Results so far (exploratory)
 
 Real-data run: 30,000 pitches, 2 chains, 600 warmup and 600 samples, original-call outcome.
 
 - `d_sigma_c` +0.076 (90% interval -0.079 to +0.233) and `d_sigma_u` -0.090 (-0.231 to +0.037):
   intervals include zero, so no detectable change in the spread of catcher or umpire effects.
-- The zone-change map (`figures/change_meaningful.png`) shows more called strikes at the top and bottom
-  edges and fewer at the left and right edges. Cells are outlined only where there is at least a 90%
-  probability that the change exceeds 0.05. Intervals are pointwise (no multiplicity correction), the GP
+- The zone-change map (`figures/change_meaningful.png`) shows more called strikes just above and below the
+  zone (up to about +0.2) and fewer just outside the left edge. The right-edge decrease is smaller and does
+  not clear the threshold. Cells are outlined only where there is at least a 90% probability that the change
+  exceeds 0.05; about 6% of the grid qualifies, all of it next to the zone edge. Intervals are pointwise (no multiplicity correction), the GP
   smooths neighboring cells together, and the 2025 and 2026 samples differ in composition and timing,
   so treat this as a hypothesis for a larger sample, not a finding.
 
