@@ -129,11 +129,12 @@ Real-data run: 30,000 pitches, 2 chains, 600 warmup and 600 samples, original-ca
   the overturned flag from the game feed (`--outcome original`).
 - The challenge model (`stan/challenge.stan`) is included but has not been run on real data; only
   12 pitcher challenges exist in the sample, so the pitcher role is not identifiable.
-- An earlier shorter run (300 warmup and 300 samples): the effect-scale
-  differences `d_sigma_c` (+0.06) and `d_sigma_u` (-0.08) have 90% intervals that include zero. Sampling
-  is not converged: the GP length scale `rho_s` has R-hat 1.18 and an effective sample size near 10,
-  nearly every iteration hits the treedepth cap, and 3.7% of pitches have a bad LOO Pareto-k. A longer
-  run is the next step; treat the 2026-minus-2025 zone map as exploratory until then.
+- Sampling diagnostics. An earlier, shorter run (300 warmup and 300 samples) did not converge: the GP
+  length scale `rho_s` had R-hat 1.18 and an effective sample size near 10. The reported run (600 warmup
+  and 600 samples) fixed that (`rho_s` R-hat 1.01, effective sample size in the hundreds) and left the
+  effect-scale conclusions unchanged. Remaining issues: nearly every iteration still hits the treedepth
+  cap (an efficiency problem, not a validity one), the pitcher scale `sigma_p` mixes poorly (R-hat 1.08,
+  few pitches per pitcher), and about 2% of pitches have a bad LOO Pareto-k.
 - A wider 2026 date range will tighten every estimate; the pipeline scales by changing the pull dates.
 
 ## Reproduce
@@ -142,6 +143,6 @@ Real-data run: 30,000 pitches, 2 chains, 600 warmup and 600 samples, original-ca
 python scripts/01_pull_statcast.py
 python scripts/06_pull_challenges.py
 python scripts/02_build_dataset.py
-python scripts/03_fit_called_strike.py --outcome original --chains 2
-python scripts/05_report.py --fit-dir outputs/called_strike_original
+python scripts/03_fit_called_strike.py --outcome original --n-max 30000 --chains 2 --warmup 600 --samples 600 --out outputs/called_strike_original_long
+python scripts/05_report.py --fit-dir outputs/called_strike_original_long
 ```
