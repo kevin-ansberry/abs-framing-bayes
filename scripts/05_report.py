@@ -6,15 +6,21 @@
 Uses the newest run in the folder, so interrupted earlier runs do not break it.
 """
 import argparse
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 from cmdstanpy import from_csv
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from absbayes.uncertainty import change_summary, meaningful_change  # noqa: E402
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--fit-dir", default="outputs/called_strike_original")
+    ap.add_argument("--min-change", type=float, default=0.05,
+                    help="smallest change in called-strike probability that counts as meaningful")
     a = ap.parse_args()
     d = Path(a.fit_dir)
     files = sorted(d.glob("called_strike-*.csv"))
@@ -40,6 +46,41 @@ if __name__ == "__main__":
         a_.set_xlabel("horizontal (zone half-widths)")
         a_.set_ylabel("vertical (rescaled zone)")
     fig.savefig(d / "zone_surface.png", dpi=150)
+
+    # Where is the 2026-minus-2025 change distinguishable from zero? Pointwise posterior probability.
+    d25 = fit.stan_variable("surf_2025")
+    d26 = fit.stan_variable("surf_2026")
+    _, p_pos, lo, hi = change_summary(d25, d26)
+    p_pos = p_pos.reshape(gx.shape)
+    sure = (lo.reshape(gx.shape) > 0) | (hi.reshape(gx.shape) < 0)
+    fig3, ax3 = plt.subplots(figsize=(5.5, 4.5), constrained_layout=True)
+    c = ax3.contourf(gx, gz, p_pos, levels=np.linspace(0, 1, 11), cmap="RdBu_r")
+    ax3.contour(gx, gz, sure.astype(float), levels=[0.5], colors="k", linewidths=1)
+    ax3.plot([-1, 1, 1, -1, -1], [-1, -1, 1, 1, -1], "w--", lw=1)
+    fig3.colorbar(c, ax=ax3, label="P(2026 > 2025)")
+    ax3.set_title(f"Probability of a higher called-strike rate in 2026 ({label} call)\n"
+                  "black outline: 90% interval excludes zero", fontsize=9)
+    ax3.set_xlabel("horizontal (zone half-widths)")
+    ax3.set_ylabel("vertical (rescaled zone)")
+    fig3.savefig(d / "change_probability.png", dpi=150)
+    print(f"cells with 90% interval excluding zero: {100 * sure.mean():.1f}% of grid")
+
+    # Same question, but only flag cells where the change is likely at least --min-change.
+    mask, p_up, p_down = meaningful_change(d25, d26, threshold=a.min_change)
+    mean_chg = (d26 - d25).mean(axis=0).reshape(gx.shape)
+    mask = mask.reshape(gx.shape)
+    fig4, ax4 = plt.subplots(figsize=(5.5, 4.5), constrained_layout=True)
+    lim = max(0.05, float(np.abs(mean_chg).max()))
+    c = ax4.contourf(gx, gz, mean_chg, levels=np.linspace(-lim, lim, 21), cmap="RdBu_r")
+    ax4.contour(gx, gz, mask.astype(float), levels=[0.5], colors="k", linewidths=1.2)
+    ax4.plot([-1, 1, 1, -1, -1], [-1, -1, 1, 1, -1], "w--", lw=1)
+    fig4.colorbar(c, ax=ax4, label="posterior mean change in P(called strike)")
+    ax4.set_title(f"Change, 2026 minus 2025 ({label} call)\n"
+                  f"outline: at least 90% probability the change exceeds {a.min_change:.2f}", fontsize=9)
+    ax4.set_xlabel("horizontal (zone half-widths)")
+    ax4.set_ylabel("vertical (rescaled zone)")
+    fig4.savefig(d / "change_meaningful.png", dpi=150)
+    print(f"cells with at least 90% probability of a change > {a.min_change:.2f}: {100 * mask.mean():.1f}% of grid")
 
     # Did the spread of catcher and umpire effects change? Posterior of the difference.
     fig2, ax2 = plt.subplots(1, 2, figsize=(10, 3.5), constrained_layout=True)
