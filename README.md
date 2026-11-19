@@ -111,6 +111,18 @@ tests/          basis accuracy, normalization, pipeline checks
 _To be added after running the models: surface plots, the posterior for `d_sigma_c` and
 `d_sigma_u`, and a ranked, uncertainty-aware list of catchers._
 
+## Results so far (exploratory)
+
+Real-data run: 30,000 pitches, 2 chains, 600 warmup and 600 samples, original-call outcome.
+
+- `d_sigma_c` +0.076 (90% interval -0.079 to +0.233) and `d_sigma_u` -0.090 (-0.231 to +0.037):
+  intervals include zero, so no detectable change in the spread of catcher or umpire effects.
+- The zone-change map (`figures/change_meaningful.png`) shows more called strikes at the top and bottom
+  edges and fewer at the left and right edges. Cells are outlined only where there is at least a 90%
+  probability that the change exceeds 0.05. Intervals are pointwise (no multiplicity correction), the GP
+  smooths neighboring cells together, and the 2025 and 2026 samples differ in composition and timing,
+  so treat this as a hypothesis for a larger sample, not a finding.
+
 ## Status and limitations
 
 - The model was validated on simulated data with known parameters (`scripts/simulate.py`):
@@ -122,6 +134,11 @@ _To be added after running the models: surface plots, the posterior for `d_sigma
   the overturned flag from the game feed (`--outcome original`).
 - The challenge model (`stan/challenge.stan`) is included but has not been run on real data; only
   12 pitcher challenges exist in the sample, so the pitcher role is not identifiable.
+- An earlier shorter run (300 warmup and 300 samples): the effect-scale
+  differences `d_sigma_c` (+0.06) and `d_sigma_u` (-0.08) have 90% intervals that include zero. Sampling
+  is not converged: the GP length scale `rho_s` has R-hat 1.18 and an effective sample size near 10,
+  nearly every iteration hits the treedepth cap, and 3.7% of pitches have a bad LOO Pareto-k. A longer
+  run is the next step; treat the 2026-minus-2025 zone map as exploratory until then.
 - A wider 2026 date range will tighten every estimate; the pipeline scales by changing the pull dates.
 
 ## Reproduce
